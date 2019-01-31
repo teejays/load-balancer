@@ -2,4 +2,4 @@
 
 package main
 
-const targetBinaryName string = "./../bin/challenge-linux"
+const targetBinaryName string = "./bin/challenge-linux"

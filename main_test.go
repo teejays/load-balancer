@@ -12,7 +12,7 @@ import (
 )
 
 var targetPorts = []int{9000, 9001, 9002, 9003, 9004, 9005}
-var runningTargetPipes []io.WriteCloser
+var runningTargetPipes []io.WriteCloser // used to close the target servers
 var serverAddrs ServerAddresses
 
 func init() {
@@ -111,7 +111,7 @@ func TestRoundRobin(t *testing.T) {
 
 }
 
-// Functions to start the target servers
+// Functions to start/stop the target servers `go test`
 
 func startTargetServers() (err error) {
 	for _, p := range targetPorts {
@@ -124,9 +124,7 @@ func startTargetServers() (err error) {
 }
 
 func stopTargetServers() {
-	// Stop the servers
 	for _, stdin := range runningTargetPipes {
-		//log.Print("Closing target server")
 		stdin.Close()
 	}
 }
@@ -145,7 +143,6 @@ func startTargetServer(port int) error {
 	}
 
 	runningTargetPipes = append(runningTargetPipes, stdin)
-	//log.Print(fmt.Sprintf("Starting target server at %d", port))
 
 	return nil
 }

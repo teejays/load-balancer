@@ -1,4 +1,4 @@
-// package main implements a sample load balancer in Golang. The program
+// main package implements a sample load balancer in Golang. The program
 // accepts two different kinds of parameters:
 // -p: port at which the run the listener server
 // -b: address for backend servers
@@ -27,7 +27,6 @@
 //    To-do: Implement a limit on how many retries on a 500 response.
 // 4. Copy the response from the target server to the resonse for the client http request.
 //
-
 //
 // Reverse Proxy: All the incoming requests have their http.Request instance changed
 // and are forwarded to a backend server. The response is copied over into the response for

@@ -1,6 +1,7 @@
 PROJECT_NAME = load-balancer
 
 GO = go
+GO_FMT = $(GO) fmt
 GO_BUILD = $(GO) build
 
 SRC_DIR = 
@@ -11,7 +12,7 @@ BACKEND_SERVER_BIN_PATH = $(BIN_DIR)/challenge-darwin
 
 all: clear build run-dev
 
-build:
+build: go-fmt
 	$(GO_BUILD) -o $(BINARY_PATH) ./$(SRC_DIR)
 
 run-dev: run-dev-backend-servers
@@ -22,5 +23,11 @@ run-dev-backend-servers:
 		($(BACKEND_SERVER_BIN_PATH) server -p $$port &) ; \
 	done
 
+go-test:
+	$(GO) test -v
+
 clear:
 	clear
+
+go-fmt:
+	$(GO_FMT)

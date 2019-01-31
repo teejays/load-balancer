@@ -2,4 +2,4 @@
 
 package main
 
-const targetBinaryName string = "./../bin/challenge-darwin"
+const targetBinaryName string = "./bin/challenge-darwin"
