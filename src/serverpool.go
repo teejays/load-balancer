@@ -76,31 +76,31 @@ func NewServerPool(addrs ServerAddresses) (*ServerPool, error) {
 	return &pool, nil
 }
 
-func (pool *ServerPool) GetServer() (*BackendServer, error) {
-	var index int
+func (pool *ServerPool) GetServer(handler func(*ServerPool) (*BackendServer, error)) (*BackendServer, error) {
+	return handler(pool)
+}
 
-	// Default Method: Round Robin
+func RoundRobin(pool *ServerPool) (*BackendServer, error) {
 	var cnt int
 	for {
 		// If we have looked at all the servers and haven't found any healthy,
 		// we should just error out with no healthy servers.
 		if cnt >= len(pool.Servers) {
-			return nil, ErrNoHealthyServer
+			break
 		}
 
 		// Start from the index of the last used server and
 		if pool.Servers[pool.CurrentIndex].IsHealthy() {
-			index = pool.CurrentIndex
+			server := pool.Servers[pool.CurrentIndex]
 			pool.IncrementCurrentIndex()
-			break
+			return server, nil
 		}
 
 		pool.IncrementCurrentIndex()
 		cnt++
 	}
 
-	return pool.Servers[index], nil
-
+	return nil, ErrNoHealthyServer
 }
 
 func (pool *ServerPool) IncrementCurrentIndex() {
