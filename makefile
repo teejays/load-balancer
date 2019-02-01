@@ -8,6 +8,7 @@ GO_BUILD = $(GO) build
 
 SRC_DIR = 
 BIN_DIR = bin
+OUT_DIR = _out
 BINARY_PATH = $(BIN_DIR)/$(PROJECT_NAME)-$(SYS_TYPE)
 
 TARGET_SERVER_BIN_PATH = $(BIN_DIR)/challenge-$(SYS_TYPE)
@@ -60,7 +61,7 @@ build-with-pprof:
 
 run-with-pprof: start-targets
 	@echo "run-with-pprof: Running the pprof-enabled binary in the background"; \
-	./$(BINARY_PPROF_PATH) -b http://localhost:9000 -b http://localhost:9001 -b http://localhost:9002 -b http://localhost:9003 -b http://localhost:9004 -b http://localhost:9005 -b http://localhost:9006 -b http://localhost:9007 -b http://localhost:9008 -b http://localhost:9009 > out.log 2> err.log &
+	./$(BINARY_PPROF_PATH) -b http://localhost:9000 -b http://localhost:9001 -b http://localhost:9002 -b http://localhost:9003 -b http://localhost:9004 -b http://localhost:9005 -b http://localhost:9006 -b http://localhost:9007 -b http://localhost:9008 -b http://localhost:9009 > $(OUT_DIR)/out.log 2> $(OUT_DIR)/err.log &
 
 kill-lb-with-pprof:
 	@echo "kill-lb-with-pprof: Stopping pprof-enabled load balancer (if any running)..."; \
@@ -68,7 +69,7 @@ kill-lb-with-pprof:
 
 start-loadtest: 
 	@echo "start-loadtest: Starting the load test..."; \
-	./scripts/load-test.sh > out.log 2> err.log &
+	./scripts/load-test.sh > $(OUT_DIR)/out.log 2> $(OUT_DIR)/err.log &
 
 kill-loadtest: 
 	@echo "kill-loadtest: Stopping the load test (if any running)..."; \
@@ -78,7 +79,7 @@ PPROF_PORT = 6060
 PPROF_SECS = 30
 get-profile:
 	@echo "get-profile: Fetching the pprof CPU $(PPROF_SECS)secs profile..."; \
-	$(GO) tool pprof -png -output profile_cpu_$(PPROF_SECS)secs.png http://localhost:$(PPROF_PORT)/debug/pprof/profile?seconds=$(PPROF_SECS)
+	$(GO) tool pprof -png -output $(OUT_DIR)/profile_cpu_$(PPROF_SECS)secs.png http://localhost:$(PPROF_PORT)/debug/pprof/profile?seconds=$(PPROF_SECS)
 
 kill: kill-lb kill-lb-with-pprof kill-targets kill-loadtest
 	
