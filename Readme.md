@@ -89,3 +89,6 @@ I was able to add a simple benchmarking function to test requests to the load ba
 ![30sec CPU Profile](https://i.imgur.com/9gRIVt7.png)
 
 It will be interesting to see how the graph looks like extremely high load. If I had a little more time, I would've set up a testing profile in JMeter to better load test.
+
+## Contact
+For any issues, please feel free to reach out to me at hello@talha.io.
