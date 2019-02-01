@@ -13,13 +13,14 @@ import (
 // target servers, and allows picking of healthy target servers using round robin.
 type ServerPool struct {
 	Servers          []*TargetServer
+	NumHealthy       int
 	CurrentIndex     int
 	PauseHealthCheck bool
 	sync.Mutex
 }
 
 // HealthCheckInterval defines the interval between two subsequent health checks of all servers
-var HealthCheckInterval time.Duration = time.Second * 10
+var HealthCheckInterval time.Duration = time.Millisecond * 200
 
 var (
 	ErrNoServerAddressForPool = errors.New("Empty server address list provided for pool")

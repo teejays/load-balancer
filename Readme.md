@@ -38,31 +38,24 @@ The project tests are written using Go's standard _testing_ package. They can be
 
 ## Description
 
-The project code has three main components/entities:
-// 1. ServerAddresses []string: It implements the flag.Var interface, and allows
-//    capturing multiple -b flags from the command line
-// 2. TargetServer struct: It represents a target server, with fields to keep track of the health
-//    and functions implemented for checking and updating the health status
-// 3. ServerPool struct: Holds all the (healthy or degraded) backend servers in an array, and allows
-//    picking of healthy server for forwarding the http requests.
-//
-// When you start the application, it does five main things:
-// 1. Parse the command line arguments to get ServerAddresses
-// 2. Create a ServerPool from the ServerAddresses instance, in the process creating a TargetServer
-//    instance for each of the server address
-// 3. Start a goroutine to periodically check the health status of each TargetServer
-// 4. Start a listener webserver on the port specified (or default 8888) that listens for requests and
-//    proxies them to the target servers
-//
-// When you make a http request to the load balancer, the following logic takes place:
-// 1. Listener webserver accepts the request
-// 2. It uses a Round Robin type algorithm to get a healthy target server from the pool. If
-//    no healthy server, return error.
-// 3. Make a request to the healthy target server. If status code is 500, repeat from 1.
-//    To-do: Implement a limit on how many retries on a 500 response.
-// 4. Copy the response from the target server to the resonse for the client http request.
-//
-//
-// Reverse Proxy: All the incoming requests have their http.Request instance changed
-// and are forwarded to a backend server. The response is copied over into the response for
-// the original request.
+This project code has three main components/entities:
+
+1. **_ServerAddresses_** []string: This implements the flag.Var interface, and therefore allows capturing multiple -b flags from the command line.
+
+2. **_TargetServer_** struct: This represents one target server, with struct fields to keep track of the health status of that server and various struct methods implemented, including for checking and updating the health status.
+
+3. **_ServerPool_** struct: Holds all the (healthy and degraded) target servers in an array, and allows selection of a healthy server using Round Robin for forwarding the http requests. Whenever a new ServerPool is created, a secondary go-routine is setup that, after every set interval, goes through all the TargetServer in the pool and updates their health status.
+
+**_Initialization:_** Upon initialization, load balancer parses the command line arguments to get the port and all the target server addresses. It uses the target server addresses to create an instance of type ServerPool, _pool_. This is also starts a goroutine to periodically check the health status of the target servers.
+
+Eventually, the load balancer starts it's own server to listen for requests. The listener server has a handler that implements the logic of load-balancing, and redirects the request to appropriate target servers.
+
+**_Handling Request:_** When a HTTP request is made to the load balancer, the listener server accepts the requests and forwards it to the HTTP handler. The handler uses a Round Robin type algorithm to get a healthy target server from the _pool_. If there is no healthy server, it returns a 503. If there is a healthy server available, it redirects the request to the healthy target server. If the target server returns a 500, it marks that server as degraded and retries by selecting a newer server.
+
+
+## Discussion
+
+**_Proxy_**: There were a few different ways to implement this. Golang's httputil.ReverseProxy does implement a solution for this but using that makes it difficult to implement any logic between getting a response from the target server and returning the response to the client. Hence, I end up changing the http.Request manually to redirect it to the target server and then making a http.Transport roundtrip call to the target server to get the response. The response is then directly copied into the response for the original request.
+
+
+**_Testing_**: Ideally, we would  want to have tests that can mimic the desired scenario in a deterministic way. For example, I wanted to write a test that can mimic the case where a healthy server returns a 500. Although such tests could be implemented if I write a mock target server handler that I can control, but I felt that was perhaps beyond the scope of the project.
