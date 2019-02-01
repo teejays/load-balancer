@@ -71,6 +71,9 @@ kill-targets:
 go-test: get-target-binary
 	$(GO) test -v
 
+benchmark: get-target-binary
+	$(GO) test -v -bench=. -benchtime=20s
+
 clean:
 	rm $(BIN_DIR)/*
 

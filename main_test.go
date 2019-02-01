@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/teejays/clog"
 )
 
 var targetPorts = []int{9000, 9001, 9002, 9003, 9004, 9005}
@@ -22,39 +24,53 @@ func init() {
 	for _, p := range targetPorts {
 		serverAddrs = append(serverAddrs, fmt.Sprintf("http://localhost:%d", p))
 	}
-}
 
-// TestNewServerPool tests that we can successfully create a new ServerPool instance.
-func TestNewServerPool(t *testing.T) {
+	// Supress logging level
+	clog.LogLevel = 4
+
+	// Start the servers
 	err := startTargetServers()
 	if err != nil {
-		t.Fatalf("failed to start target servers: %s", err)
+		log.Fatalf("failed to start target servers: %s", err)
 	}
-	defer stopTargetServers()
 
 	// Initialize ServerAddresses & ServerPool
 	pool, err = NewServerPool(serverAddrs)
 	if err != nil {
-		t.Error(err)
+		log.Fatal(err)
 	}
-
-	pool.CancelHealthCheck()
-	pool = nil
 }
+
+// // TestNewServerPool tests that we can successfully create a new ServerPool instance.
+// func TestNewServerPool(t *testing.T) {
+// 	err := startTargetServers()
+// 	if err != nil {
+// 		t.Fatalf("failed to start target servers: %s", err)
+// 	}
+// 	defer stopTargetServers()
+
+// 	// Initialize ServerAddresses & ServerPool
+// 	pool, err = NewServerPool(serverAddrs)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	pool.CancelHealthCheck()
+// 	pool = nil
+// }
 
 // TestNewServerPool tests that successfully get a 503 when there are no healthy servers
 func TestNoHealthyServer(t *testing.T) {
-	var err error
 
 	// Initialize the pool
-	pool, err = NewServerPool(serverAddrs)
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {
-		pool.CancelHealthCheck()
-		pool = nil
-	}()
+	// pool, err = NewServerPool(serverAddrs)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// defer func() {
+	// 	pool.CancelHealthCheck()
+	// 	pool = nil
+	// }()
 
 	// Degrade all the servers and keep in that state
 	pool.PauseHealthChecks()
@@ -71,33 +87,13 @@ func TestNoHealthyServer(t *testing.T) {
 		t.Errorf("Expected a 503 status code but got %d", w.Code)
 	}
 
+	pool.Normalize()
+
 }
 
 // TestNewServerPool makes concurrent requests to the load balancer and fails if it receives anything
 // other than a 503 or 200
 func TestConcurrent(t *testing.T) {
-	var err error
-
-	// Start Target servers
-	err = startTargetServers()
-	if err != nil {
-		t.Fatalf("failed to start target servers: %s", err)
-	}
-	defer stopTargetServers()
-
-	time.Sleep(5 * time.Second)
-
-	// Initialize the pool
-	pool, err = NewServerPool(serverAddrs)
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {
-		pool.CancelHealthCheck()
-		pool = nil
-	}()
-
-	time.Sleep(5 * time.Second)
 
 	// Create some load to pass to our handler
 	var concurrency = make(chan int, 1)
@@ -137,20 +133,11 @@ func TestConcurrent(t *testing.T) {
 
 // TestRoundRobin tests that Round Robin behaves as expected, returning the next healthy server.
 func TestRoundRobin(t *testing.T) {
-	var err error
-
-	// Initialize the pool
-	pool, err = NewServerPool(serverAddrs)
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {
-		pool.CancelHealthCheck()
-		pool = nil
-	}()
 
 	// Test 1: When all servers are healthy
+	pool.PauseHealthChecks()
 	pool.HealthyAll()
+	pool.CurrentIndex = 0
 
 	for i := 0; i < len(pool.Servers); i++ {
 		rrIdx, err := RoundRobin(pool)
@@ -178,6 +165,16 @@ func TestRoundRobin(t *testing.T) {
 		}
 	}
 
+	pool.Normalize()
+
+}
+
+func BenchmarkServer(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		r := httptest.NewRequest("GET", fmt.Sprintf("http://localhost:%d", listenerPortDeault), nil)
+		w := httptest.NewRecorder()
+		listenerHandler(w, r)
+	}
 }
 
 // Functions to start/stop the target servers `go test`
@@ -188,7 +185,7 @@ func startTargetServers() (err error) {
 		if err != nil {
 			return err
 		}
-		time.Sleep(2)
+		time.Sleep(2 * time.Second)
 	}
 	return nil
 }

@@ -35,9 +35,11 @@ The application accepts two different kinds of parameters:
 
 Once you've successfully run ```make run-dev```, the load balancer is on and running. You will be able to see its output in stdout. 
 
+Use ```make kill``` to stop any running processes.
+
 #### Testing
 
-**_Golang's Testing package:_** The project tests are written using Go's standard _testing_ package. They can be run using ```make go-test ```. 
+**_Golang's Testing package:_** The project tests are written using Go's standard _testing_ package. They can be run using ```make go-test ```. The benchmark can be run using ```make benchmark```.
 
 **_Load Test:_** There is a bash script that simulates load by calling the load balancer sequentially. You can run it by calling ```make start-loadtest```. You can turn it off by calling ```make kill-loadtest```.
 
@@ -77,6 +79,8 @@ This implementation can potentially be optimized if I can categorize healthy and
 
 **_Testing_**: Ideally, we would  want to have tests that can mimic the desired scenario in a deterministic way. For example, I wanted to write a test that can mimic the case where a healthy server returns a 500. Although such tests could be implemented if I write a mock target server handler that I can control, but I felt that was perhaps beyond the scope of the project. If I had more time, I would probably do more intensive testing. I implemented a load test using a simple bash script. Since this is a load-balancer, I felt it made sense to see how it performs under load.
 
+I was able to add a simple benchmarking function to test requests to the load balancer server.
+![Benchmark Output](https://i.imgur.com/EjMtChV.png)
 
 **_Profiling_**: A 30sec CPU profile for the load-balancer under moderate load looks okay. It seems like that there are no clear bottlenecks in the code. The diagram is shown below and can also be accessed [here](https://imgur.com/a/Qadz6ZD).
 
