@@ -9,7 +9,7 @@ This Golang executable implements a simple HTTP load balancer (LB). It is fully 
 
 ## Getting Started
 
-The project comes with a makefile that simplifies the process of building, running and testing it.
+The project comes with a makefile that simplifies the process of building, running and testing it. Actually, it depends heavily on the make file.
 
 #### Prerequisites
 
@@ -23,18 +23,25 @@ The project can built using the command: ```make build```. The compiled binaries
 
 #### Run
 
-**_Makefile_**: Use ```make run-dev```. Running the _make_ command starts nine target servers with ports starting from 9000 to 9009. It also starts the load-balancer by passing it the addresses for all the target severs running.
-
-**_Without Makefile_**: If you want to run the application manually, you can do it using: ```./bin/load-balancer -p <port> -b <server 1> -b <server 2>  ```. You should replace <port> with the port number you want load-balancer to listen on, and <server _n_> with the address of each of the target servers that you are running.
+**_Without Makefile_**: You should be using the makefile, but if you want to run the application manually, you can do it using: ```./bin/load-balancer -p <port> -b <server 1> -b <server 2>  ```. You should replace <port> with the port number you want load-balancer to listen on, and <server _n_> with the address of each of the target servers that you are running.
 
 The application accepts two different kinds of parameters:
 
 * **_-p_** : port at which the run the listener server
 * **_-b_** : address for each of the backend target servers
 
+**_Makefile_**: Use ```make run-dev```. Running this _make_ command downloads the target server binaries from Google Drive (if they haven't already been downloaded), start nine target servers with ports starting from 9000 to 9009. It also starts the load-balancer by passing it the addresses for all the target servers.
+
+Once you've successfully run ```make run-dev```, the load balancer is on and running. You will be able to see its output in stdout. 
+
 #### Testing
 
-The project tests are written using Go's standard _testing_ package. They can be run using ```make go-test ```
+**_Golang's Testing package:_** The project tests are written using Go's standard _testing_ package. They can be run using ```make go-test ```. 
+
+**_Load Test:_** There is a bash script that simulates load by calling the load balancer sequentially. You can run by calling ```make start-loadtest```. You can turn it off by calling ```make kill-loadtest```.
+
+**_Profiling:_** The application is also set up for easy system profiling. Running ```make pprof``` compiles a _pprof_ ready ve rsion of the program. which is then run under high load. A 30sec CPU profile is then generated (more about it, and sample profile later). 
+
 
 ## Description
 
@@ -50,12 +57,20 @@ This project code has three main components/entities:
 
 Eventually, the load balancer starts it's own server to listen for requests. The listener server has a handler that implements the logic of load-balancing, and redirects the request to appropriate target servers.
 
-**_Handling Request:_** When a HTTP request is made to the load balancer, the listener server accepts the requests and forwards it to the HTTP handler. The handler uses a Round Robin type algorithm to get a healthy target server from the _pool_. If there is no healthy server, it returns a 503. If there is a healthy server available, it redirects the request to the healthy target server. If the target server returns a 500, it marks that server as degraded and retries by selecting a newer server.
+**_Handling Request:_** When a HTTP request is made to the load balancer, the listener server accepts the requests and forwards it to the HTTP handler. The handler uses a Round Robin type algorithm to get a healthy target server from the _pool_. If there is no healthy server, it returns a 503. If there is a healthy server available, it redirects the request to the healthy target server by making use of Go's http.DefaultTransport. If the target server returns a 500, it marks that server as degraded and retries by selecting a newer server.
 
 
 ## Discussion
 
+**_Server Selection Algorithms:_** I decided to implement a simple Round Robin algorithm because of its simplicity and popularity. However, the code is designed to allow for other and more complicated algorithms e.g. least connection, least response time, least bandwidth etc. More fields could be added to the TargetServer type to hold more info to implement such algorithms e.g. we can store the number of active connections for a target server and implement least connection algorithm.
+
+
+**_Round Robin Implementation:_** My Round Robin implementation 
+
 **_Proxy_**: There were a few different ways to implement this. Golang's httputil.ReverseProxy does implement a solution for this but using that makes it difficult to implement any logic between getting a response from the target server and returning the response to the client. Hence, I end up changing the http.Request manually to redirect it to the target server and then making a http.Transport roundtrip call to the target server to get the response. The response is then directly copied into the response for the original request.
 
 
-**_Testing_**: Ideally, we would  want to have tests that can mimic the desired scenario in a deterministic way. For example, I wanted to write a test that can mimic the case where a healthy server returns a 500. Although such tests could be implemented if I write a mock target server handler that I can control, but I felt that was perhaps beyond the scope of the project.
+**_Testing_**: Ideally, we would  want to have tests that can mimic the desired scenario in a deterministic way. For example, I wanted to write a test that can mimic the case where a healthy server returns a 500. Although such tests could be implemented if I write a mock target server handler that I can control, but I felt that was perhaps beyond the scope of the project. If I had more time, I would probably do more intensive testing. I implemented a load test using a simple bash script. Since this is a load-balancer, I felt it made sense to see how it performs under load.
+
+
+**_Profiling_**: I wanted 

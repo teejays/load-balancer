@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,10 +13,11 @@ import (
 // ServerPool is the primary data structure of this application. It holds an array of all the
 // target servers, and allows picking of healthy target servers using round robin.
 type ServerPool struct {
-	Servers          []*TargetServer
-	NumHealthy       int
-	CurrentIndex     int
-	PauseHealthCheck bool
+	Servers           []*TargetServer
+	NumHealthy        int
+	CurrentIndex      int
+	PauseHealthCheck  bool
+	CancelHealthCheck context.CancelFunc
 	sync.Mutex
 }
 
@@ -56,23 +58,26 @@ func NewServerPool(addrs ServerAddresses) (*ServerPool, error) {
 	}
 
 	// goroutine to start the health check process for the pool servers
-	go (&pool).RunHealthCheckProcess(HealthCheckInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	pool.CancelHealthCheck = cancel
+	go (&pool).RunHealthCheckProcess(ctx, HealthCheckInterval)
 
 	return &pool, nil
 }
 
 // RunHealthCheck is blocking and should be run as a separate goroutine in most case.
 // It's starts an infinite loop that periodically checks the health status of all the servers.
-func (pool *ServerPool) RunHealthCheckProcess(interval time.Duration) {
+func (pool *ServerPool) RunHealthCheckProcess(ctx context.Context, interval time.Duration) {
 
 	// Start an infinite loop
 	for {
-		// In the infinite loop, check health of all the servers,
-		// one by one, after a set interval
-
-		// Initiate updating health statuses for all servers
-		if !pool.PauseHealthCheck {
-			pool.RunHealthCheck()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if !pool.PauseHealthCheck {
+				pool.RunHealthCheck()
+			}
 		}
 
 		time.Sleep(HealthCheckInterval)
@@ -141,10 +146,6 @@ func (pool *ServerPool) IncrementCurrentIndex() {
 }
 
 // Functions to help mock change the state of the pool
-
-func (pool *ServerPool) Delete() {
-	pool = nil
-}
 
 func (pool *ServerPool) DegradeAll() {
 	for _, t := range pool.Servers {

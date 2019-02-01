@@ -68,7 +68,7 @@ kill-targets:
 	pkill -f $(TARGET_SERVER_BIN_PATH) || true
 
 # Others
-go-test:
+go-test: get-target-binary
 	$(GO) test -v
 
 clean:
