@@ -8,7 +8,9 @@ This Golang application implements a simple HTTP load balancer (LB). It is fully
 
 ## Getting Started
 
-The project comes with a makefile that simplifies the process of building, running and testing it.
+The project comes with a makefile that simplifies the process of building, running and testing it. 
+
+**_Note:_** Although the project is designed to be built and run on both linux and darwin systems, it was primarily developed and tested on a darwin system. 
 
 #### Prerequisites
 
