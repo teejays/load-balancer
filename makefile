@@ -8,62 +8,77 @@ GO_BUILD = $(GO) build
 
 SRC_DIR = 
 BIN_DIR = bin
-BINARY_PATH = $(BIN_DIR)/$(PROJECT_NAME)-$(SYS-TYPE)
+BINARY_PATH = $(BIN_DIR)/$(PROJECT_NAME)-$(SYS_TYPE)
 
 TARGET_SERVER_BIN_PATH = $(BIN_DIR)/challenge-$(SYS_TYPE)
 
-
-all: clear build run-dev
-
 build: go-fmt
-	$(GO_BUILD) -o $(BINARY_PATH) ./$(SRC_DIR)
+	@echo "build: Compiling the load balancer"; \
+	$(GO_BUILD) -o $(BINARY_PATH) ./$(SRC_DIR) ; \
+	echo "build: Build successful: $(BINARY_PATH)"; \
 
-run-dev: run-targets
+run-dev: kill-lb start-targets
+	@echo "run-dev: Starting the load balancer server on default port..."; \
 	./$(BINARY_PATH) -b http://localhost:9000 -b http://localhost:9001 -b http://localhost:9002 -b http://localhost:9003 -b http://localhost:9004 -b http://localhost:9005 -b http://localhost:9006 -b http://localhost:9007 -b http://localhost:9008 -b http://localhost:9009
 
-run-targets: kill-targets
+kill-lb:
+	@echo "kill-lb: Stopping load balancer (if any running)..."; \
+	pkill -f $(BINARY_PATH) || true
+
+start-targets: kill-targets
+	@echo "start-targets: Starting Target Servers. This may take a while as we sleep for a bit after each server..." ; \
 	for port in 9000 9001 9002 9003 9004 9005 9006 9007 9008 9009 ; do \
 		($(TARGET_SERVER_BIN_PATH) server -p $$port &) && sleep 2; \
-	done
-
-kill:
-	-pkill -f $(BINARY_PATH) || true
+	done; \
+	echo "Target Servers successfuly started." ; \
 
 kill-targets:
-	-pkill -f $(TARGET_SERVER_BIN_PATH) || true
+	@echo "kill-targets: Stopping all existing Target Servers (if any running)..."; \
+	pkill -f $(TARGET_SERVER_BIN_PATH) || true
+
 
 go-test:
 	$(GO) test -v
 
-clear:
-	rm $(BIN_DIR)/* && clear
+clean:
+	rm $(BIN_DIR)/*
 
 go-fmt:
-	$(GO_FMT)
+	@$(GO_FMT)
 
 
-## Profiling rules
+## Profiling rules & Load Testing
 
 BINARY_PPROF_PATH = $(BIN_DIR)/$(PROJECT_NAME)-pprof
 
-pprof: kill-all build-with-pprof run-with-pprof start-load-test get-profile stop-load-test
+pprof: kill build-with-pprof run-with-pprof start-loadtest get-profile kill-loadtest kill-lb-with-pprof
+	@echo "pprof: Completed."
 
 build-with-pprof:
+	@echo "build-with-pprof: Compiling the application with pprof enabled"; \
 	$(GO_BUILD) -tags pprof -o $(BINARY_PPROF_PATH) ./$(SRC_DIR)
 
-run-with-pprof: run-targets
+run-with-pprof: start-targets
+	@echo "run-with-pprof: Running the pprof-enabled binary in the background"; \
 	./$(BINARY_PPROF_PATH) -b http://localhost:9000 -b http://localhost:9001 -b http://localhost:9002 -b http://localhost:9003 -b http://localhost:9004 -b http://localhost:9005 -b http://localhost:9006 -b http://localhost:9007 -b http://localhost:9008 -b http://localhost:9009 > out.log 2> err.log &
 
-start-load-test: 
+kill-lb-with-pprof:
+	@echo "kill-lb-with-pprof: Stopping pprof-enabled load balancer (if any running)..."; \
+	pkill -f $(BINARY_PATH) || true
+
+start-loadtest: 
+	@echo "start-loadtest: Starting the load test..."; \
 	./scripts/load-test.sh > out.log 2> err.log &
 
-stop-load-test: 
-	-pkill -f ./scripts/load-test.sh || true
+kill-loadtest: 
+	@echo "kill-loadtest: Stopping the load test (if any running)..."; \
+	pkill -f ./scripts/load-test.sh || true
 
 PPROF_PORT = 6060
 PPROF_SECS = 30
 get-profile:
-	$(GO) tool pprof -png http://localhost:$(PPROF_PORT)/debug/pprof/profile?seconds=$(PPROF_SECS)
+	@echo "get-profile: Fetching the pprof CPU $(PPROF_SECS)secs profile..."; \
+	$(GO) tool pprof -png -output profile_cpu_$(PPROF_SECS)secs.png http://localhost:$(PPROF_PORT)/debug/pprof/profile?seconds=$(PPROF_SECS)
 
-kill-all: kill kill-targets stop-load-test
+kill: kill-lb kill-lb-with-pprof kill-targets kill-loadtest
 	
