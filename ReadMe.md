@@ -1,7 +1,5 @@
 # Simple Load Balancer
 
-_This project is attempted as a take-home assignment for a job application. Please do not share this in a public forum. This is a part of a private Github repo._
-
 ### Introduction
 
 This Golang application implements a simple HTTP load balancer (LB). It is fully stateful, maintaining a frequently updated list of all the target servers and their states (whether the target serves are healthy or degraded). The target servers are all expected to have a health check endpoint ?\\\_health that informs on the state of that server. All the requests to the load balancer are forwarded to one of the healthy target servers, or a 503 is returned suggesting that no healthy server was available. In the rare case where a selected server becomes unhealthy before it can handle a request, load balancer retries by choosing a different healthy server.
